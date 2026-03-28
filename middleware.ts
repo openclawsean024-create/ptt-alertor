@@ -31,11 +31,14 @@ export default async function middleware(req: NextRequest) {
     '/api/alerts(.*)',
   ]);
 
-  return clerkMiddleware(async (authObj, request) => {
-    if (isProtected(request)) {
-      authObj.protect();
-    }
-  })(req as NextRequest);
+  return clerkMiddleware(
+    async (authObj, request) => {
+      if (isProtected(request)) {
+        authObj.protect();
+      }
+    },
+    { debug: false }
+  )(req as NextRequest);
 }
 
 export const config = {
