@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useSafeUser } from '@/app/_lib/safe-user';
 import { useRouter } from 'next/navigation';
 
 interface Subscription {
@@ -29,7 +29,7 @@ const POPULAR_BOARDS = [
 ];
 
 export default function SubscribePage() {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useSafeUser();
   const router = useRouter();
 
   const [selectedBoard, setSelectedBoard] = useState('');
