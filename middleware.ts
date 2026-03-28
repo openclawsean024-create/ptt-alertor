@@ -29,7 +29,7 @@ export default async function middleware(req: NextRequest) {
   try {
     const { auth } = await import('@clerk/nextjs/server');
     if (isProtectedRoute(req)) {
-      auth().protect();
+      await auth().protect();
     }
   } catch (e) {
     console.error('[middleware] Clerk auth error:', e);
