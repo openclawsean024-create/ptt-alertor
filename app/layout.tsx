@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 // Conditionally wrap with ClerkProvider only when keys are available
 async function Providers({ children }: { children: React.ReactNode }) {
-  const publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   if (!publishableKey) {
     return <>{children}</>;
   }

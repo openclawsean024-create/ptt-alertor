@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 // NOTE: Clerk authentication is temporarily bypassed to unblock deployment.
 // Once CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY are set in Vercel environment variables,
 // this middleware should be updated to use proper Clerk authentication.
-const publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const secretKey = process.env.CLERK_SECRET_KEY;
 
 export default function middleware(req: NextRequest) {
