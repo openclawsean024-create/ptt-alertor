@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useSafeUser } from '@/app/_lib/safe-user';
 import { useRouter } from 'next/navigation';
 
 interface AlertLog {
@@ -16,7 +16,7 @@ interface AlertLog {
 }
 
 export default function HistoryPage() {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useSafeUser();
   const router = useRouter();
   const [alerts, setAlerts] = useState<AlertLog[]>([]);
   const [loading, setLoading] = useState(true);

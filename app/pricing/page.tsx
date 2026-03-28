@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useSafeUser } from '@/app/_lib/safe-user';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -58,7 +58,7 @@ const TIERS = [
 ];
 
 export default function PricingPage() {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useSafeUser();
   const router = useRouter();
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 

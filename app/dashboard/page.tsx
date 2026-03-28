@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useSafeUser } from '@/app/_lib/safe-user';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -26,7 +26,7 @@ interface AlertLog {
 }
 
 export default function DashboardPage() {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useSafeUser();
   const router = useRouter();
 
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
