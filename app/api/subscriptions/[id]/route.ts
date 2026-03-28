@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { sql } from '@vercel/postgres';
+import { pool } from '@/lib/db';
 
 export async function PATCH(
   req: NextRequest,
@@ -15,7 +15,10 @@ export async function PATCH(
     const { id } = await params;
     const body = await req.json();
 
-    const userResult = await sql`SELECT id FROM users WHERE clerk_user_id = ${userId}`;
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE clerk_user_id = $1',
+      [userId]
+    );
     const userDbId = userResult.rows[0]?.id;
 
     if (!userDbId) {
@@ -34,15 +37,20 @@ export async function PATCH(
       .join(', ');
     const values = [...Object.values(updates), id, userDbId];
 
-    const result = await sql.query(
+    const result = await pool.query(
       `UPDATE subscriptions SET ${setClauses} WHERE id = $${values.length - 1} AND user_id = $${values.length} RETURNING *`,
       values
     );
 
+    if (!result.rows[0]) {
+      return NextResponse.json({ error: 'Subscription not found' }, { status: 404 });
+    }
+
     return NextResponse.json({ success: true, data: result.rows[0] });
   } catch (error) {
-    console.error('PATCH subscription error:', error);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('PATCH subscription error:', message);
+    return NextResponse.json({ error: `Internal error: ${message}` }, { status: 500 });
   }
 }
 
@@ -57,18 +65,25 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const userResult = await sql`SELECT id FROM users WHERE clerk_user_id = ${userId}`;
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE clerk_user_id = $1',
+      [userId]
+    );
     const userDbId = userResult.rows[0]?.id;
 
     if (!userDbId) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    await sql`DELETE FROM subscriptions WHERE id = ${id} AND user_id = ${userDbId}`;
+    await pool.query(
+      'DELETE FROM subscriptions WHERE id = $1 AND user_id = $2',
+      [id, userDbId]
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('DELETE subscription error:', error);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('DELETE subscription error:', message);
+    return NextResponse.json({ error: `Internal error: ${message}` }, { status: 500 });
   }
 }

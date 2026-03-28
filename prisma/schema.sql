@@ -12,9 +12,22 @@ CREATE TABLE IF NOT EXISTS users (
   line_id VARCHAR(255),
   discord_webhook VARCHAR(500),
   tier VARCHAR(20) DEFAULT 'free' CHECK (tier IN ('free', 'light', 'pro', 'enterprise')),
+  stripe_customer_id VARCHAR(255),
+  stripe_subscription_id VARCHAR(255),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Add Stripe columns if they don't exist (for existing tables)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='stripe_customer_id') THEN
+    ALTER TABLE users ADD COLUMN stripe_customer_id VARCHAR(255);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='stripe_subscription_id') THEN
+    ALTER TABLE users ADD COLUMN stripe_subscription_id VARCHAR(255);
+  END IF;
+END$$;
 
 -- Boards reference table
 CREATE TABLE IF NOT EXISTS boards (

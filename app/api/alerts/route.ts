@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { sql } from '@vercel/postgres';
+import { pool } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   try {
@@ -12,15 +12,18 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    const userResult = await sql`SELECT id FROM users WHERE clerk_user_id = ${userId}`;
+    const userResult = await pool.query(
+      'SELECT id FROM users WHERE clerk_user_id = $1',
+      [userId]
+    );
     const userDbId = userResult.rows[0]?.id;
 
     if (!userDbId) {
       return NextResponse.json({ data: [] });
     }
 
-    const result = await sql`
-      SELECT 
+    const result = await pool.query(`
+      SELECT
         a.id,
         a.article_title,
         a.article_url,
@@ -32,14 +35,15 @@ export async function GET(req: NextRequest) {
         s.board_name
       FROM alert_logs a
       JOIN subscriptions s ON a.subscription_id = s.id
-      WHERE s.user_id = ${userDbId}
+      WHERE s.user_id = $1
       ORDER BY a.notified_at DESC
-      LIMIT ${limit}
-    `;
+      LIMIT $2
+    `, [userDbId, limit]);
 
     return NextResponse.json({ success: true, data: result.rows });
   } catch (error) {
-    console.error('GET alerts error:', error);
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('GET alerts error:', message);
+    return NextResponse.json({ error: `Internal error: ${message}` }, { status: 500 });
   }
 }

@@ -1,89 +1,118 @@
 import { NextResponse } from 'next/server';
 
-// PTT Board list
-const POPULAR_BOARDS = [
-  { name: 'Stock', alias: '股板', category: 'finance' },
-  { name: 'Tech_Job', alias: '科技業板', category: 'career' },
-  { name: 'Soft_Job', alias: '軟工板', category: 'career' },
-  { name: 'Gossiping', alias: '八卦板', category: 'social' },
-  { name: 'NBA', alias: 'NBA板', category: 'sports' },
-  { name: 'Baseball', alias: '棒球板', category: 'sports' },
-  { name: 'Movie', alias: '電影板', category: 'entertainment' },
-  { name: 'TechNews', alias: '科技板', category: 'news' },
-  { name: 'Crypto', alias: '加密貨幣', category: 'finance' },
-  { name: 'MobileComm', alias: '手機板', category: 'tech' },
-  { name: 'WomenTalk', alias: '女性板', category: 'social' },
-  { name: 'Muscle', alias: '健身板', category: 'health' },
-  { name: 'Food', alias: '美食板', category: 'lifestyle' },
-  { name: 'Travel', alias: '旅遊板', category: 'lifestyle' },
-  { name: 'StudyAbroad', alias: '留學板', category: 'education' },
+interface Board {
+  name: string;
+  alias: string;
+  class: string;
+}
+
+const PTT_HOT_URL = 'https://www.ptt.cc/bbs/hotboards.html';
+const PTT_CLS_URLS = [
+  'https://www.ptt.cc/cls/801',
+  'https://www.ptt.cc/cls/802',
+  'https://www.ptt.cc/cls/806',
+  'https://www.ptt.cc/cls/807',
+  'https://www.ptt.cc/cls/899',
+  'https://www.ptt.cc/cls/1056',
+  'https://www.ptt.cc/cls/2141',
+  'https://www.ptt.cc/cls/2870',
+  'https://www.ptt.cc/cls/3290',
+  'https://www.ptt.cc/cls/3297',
+  'https://www.ptt.cc/cls/3362',
 ];
 
-// Fetch latest articles from a PTT board using ptt.ai API
-async function fetchPTTArticles(board: string, limit = 20) {
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const HEADERS = { 'User-Agent': USER_AGENT, 'Cookie': 'over18=1' };
+
+// Cache: in-memory per cold-start instance (Vercel kills instance after idle)
+let cachedBoards: Board[] | null = null;
+let cacheTime = 0;
+const CACHE_TTL = 3600 * 1000; // 1 hour
+
+function parseBoards(html: string): Board[] {
+  const entries: Board[] = [];
+  // Match: <div class="b-ent"> ... <div class="board-name">NAME</div> ... <div class="board-class">CLASS</div>
+  const regex = /<div class="b-ent">[\s\S]*?<div class="board-name">([^<]+)<\/div>[\s\S]*?<div class="board-class">([^<]*)<\/div>/g;
+  let m;
+  while ((m = regex.exec(html)) !== null) {
+    const name = m[1].trim();
+    const cls = m[2].trim();
+    if (name) entries.push({ name, alias: cls || name, class: cls || 'other' });
+  }
+  return entries;
+}
+
+async function fetchPage(url: string): Promise<Board[]> {
   try {
-    const response = await fetch(
-      `https://api.ptt.ai/v1/board/${board}/articles?limit=${limit}&desc=true`,
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.PTT_API_TOKEN || ''}`,
-          'Content-Type': 'application/json',
-        },
-        next: { revalidate: 60 }, // cache 60s
-      }
+    const res = await fetch(url, { headers: HEADERS });
+    if (!res.ok) return [];
+    const html = await res.text();
+    return parseBoards(html);
+  } catch {
+    return [];
+  }
+}
+
+async function fetchAllPTTBoards(): Promise<Board[]> {
+  const now = Date.now();
+  if (cachedBoards && now - cacheTime < CACHE_TTL) return cachedBoards;
+
+  // Fetch hotboards + all cls pages in parallel
+  const [hotHtml, ...clsResults] = await Promise.all([
+    fetch(PTT_HOT_URL, { headers: HEADERS }).then(r => r.ok ? r.text() : ''),
+    ...PTT_CLS_URLS.map(url => fetchPage(url)),
+  ]);
+
+  // Parse hotboards
+  const hotBoards = hotHtml ? parseBoards(hotHtml) : [];
+
+  // Parse cls pages (may contain boards not in hot list)
+  const clsBoards = clsResults.flat();
+
+  // Merge: hotboards first (more popular), then cls-only boards
+  const merged = new Map<string, Board>();
+  for (const b of hotBoards) merged.set(b.name, b);
+  for (const b of clsBoards) { if (!merged.has(b.name)) merged.set(b.name, b); }
+
+  const result = Array.from(merged.values());
+  cachedBoards = result;
+  cacheTime = now;
+  return result;
+}
+
+// GET /api/boards?search=xxx
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const query = searchParams.get('search')?.trim().toLowerCase() ?? '';
+
+  const allBoards = await fetchAllPTTBoards();
+
+  let results: Board[];
+
+  if (!query) {
+    results = allBoards.slice(0, 50);
+  } else {
+    results = allBoards.filter(b =>
+      b.name.toLowerCase().includes(query) ||
+      b.alias.toLowerCase().includes(query) ||
+      b.class.toLowerCase().includes(query)
     );
 
-    if (!response.ok) {
-      throw new Error(`PTT API error: ${response.status}`);
+    // Exact match on board name wins
+    if (results.length === 0) {
+      const exact = allBoards.find(b => b.name.toLowerCase() === query);
+      if (exact) results = [exact];
     }
 
-    return await response.json();
-  } catch (error) {
-    // Fallback: scrape directly
-    return await scrapePTTDirect(board, limit);
-  }
-}
-
-// Fallback direct scrape using cheerio
-async function scrapePTTDirect(board: string, limit = 20) {
-  try {
-    const response = await fetch(`https://www.ptt.cc/bbs/${board}/index.html`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; PTTAlertor/1.0)',
-        'Cookie': 'over18=1',
-      },
-      next: { revalidate: 60 },
-    });
-
-    const html = await response.text();
-    const articles: any[] = [];
-
-    // Simple regex-based parsing for article list
-    const regex = /<a href="\/bbs\/[^/]+\/([^"]+)">([^<]+)<\/a>[\s\S]{0,200}<span class="meta">([^<]+)<\/span>/g;
-    let match;
-    let count = 0;
-
-    while ((match = regex.exec(html)) !== null && count < limit) {
-      articles.push({
-        url: `https://www.ptt.cc${match[0].match(/href="([^"]+)"/)?.[1] || ''}`,
-        title: match[2]?.trim(),
-        author: match[3]?.trim(),
-        board,
-      });
-      count++;
+    // Unknown board name → offer as candidate
+    if (results.length === 0 && query.length >= 2 && query.length <= 24) {
+      results = [{ name: query, alias: `/${query}`, class: 'other' }];
     }
-
-    return { data: articles };
-  } catch (error) {
-    console.error(`Error scraping ${board}:`, error);
-    return { data: [] };
   }
-}
 
-// GET /api/boards - List available boards
-export async function GET() {
   return NextResponse.json({
     success: true,
-    data: POPULAR_BOARDS,
+    data: results.slice(0, 50),
+    total: allBoards.length,
   });
 }
