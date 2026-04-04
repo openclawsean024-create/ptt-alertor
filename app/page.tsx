@@ -7,6 +7,7 @@ export default function HomePage() {
       <nav className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
         <span className="text-xl font-bold text-gray-900">📡 PTT Alertor</span>
         <div className="flex items-center gap-4">
+          <Link href="/sign-in" className="text-sm text-gray-600 hover:text-gray-900">登入</Link>
           <Link href="/pricing" className="text-sm text-gray-600 hover:text-gray-900">定價</Link>
           <Link href="/dashboard" className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg font-medium hover:bg-blue-700">
             開始使用
