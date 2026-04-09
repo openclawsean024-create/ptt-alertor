@@ -1,10 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: '.',
-  },
-  // Vercel deployment with API routes and auth support.
+  // For Vercel deployment with SSR support
+  // (Do NOT use output: 'export' - that disables API routes & Clerk auth)
   images: {
     unoptimized: true,
   },

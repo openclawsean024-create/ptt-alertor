@@ -34,8 +34,6 @@ export async function GET(req: NextRequest) {
     }
 
     const user = result.rows[0];
-
-    // Mask sensitive data
     return NextResponse.json({
       success: true,
       data: {
@@ -62,28 +60,6 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const { line_token, email, discord_webhook } = body;
 
-    // Validate LINE token format (basic check)
-    if (line_token !== undefined && typeof line_token === 'string') {
-      if (line_token.trim().length > 0 && !line_token.match(/^[a-zA-Z0-9_-]+$/)) {
-        return NextResponse.json({ error: 'Invalid LINE token format' }, { status: 400 });
-      }
-    }
-
-    // Validate email format
-    if (email !== undefined && typeof email === 'string') {
-      if (email.trim().length > 0 && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-        return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
-      }
-    }
-
-    // Validate Discord webhook URL
-    if (discord_webhook !== undefined && typeof discord_webhook === 'string') {
-      if (discord_webhook.trim().length > 0 && !discord_webhook.startsWith('https://discord.com/api/webhooks/')) {
-        return NextResponse.json({ error: 'Invalid Discord webhook URL' }, { status: 400 });
-      }
-    }
-
-    // Build update query dynamically
     const updates: string[] = ['updated_at = NOW()'];
     const values: unknown[] = [];
     let paramIndex = 1;
