@@ -8,13 +8,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { pool } from '@/lib/db';
 
-export async function GET(req: NextRequest) {
+async function getUserId() {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    return userId ?? null;
+  } catch {
+    return null;
+  }
+}
 
+export async function GET(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
     const result = await pool.query(
       'SELECT line_id, email, discord_webhook, tier FROM users WHERE clerk_user_id = $1',
       [userId]
@@ -44,12 +53,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const userId = await getUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  try {
     const body = await req.json();
     const { line_token, email, discord_webhook } = body;
 

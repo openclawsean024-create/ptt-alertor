@@ -2,14 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { stripe } from '@/lib/stripe';
 
-export async function POST(req: NextRequest) {
+async function getUserId() {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    return userId ?? null;
+  } catch {
+    return null;
+  }
+}
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ptt-alertor-indol.vercel.app';
+export async function POST(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ptt-alertor-olive.vercel.app';
 
     // Look up user's Stripe customer ID
     const { pool } = await import('@/lib/db');

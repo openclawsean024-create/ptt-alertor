@@ -2,13 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { pool } from '@/lib/db';
 
-export async function GET() {
+async function getUserId() {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    return userId ?? null;
+  } catch {
+    // Clerk not configured — treat as unauthenticated
+    return null;
+  }
+}
 
+export async function GET() {
+  const userId = await getUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
     const result = await pool.query(`
       SELECT s.*, b.alias as board_alias
       FROM subscriptions s
@@ -26,12 +36,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const userId = await getUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
+  try {
     const body = await req.json();
     const { board_name, keywords, notify_line, notify_email, notify_discord } = body;
 

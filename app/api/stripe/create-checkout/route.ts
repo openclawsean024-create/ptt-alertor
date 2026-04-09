@@ -2,13 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { stripe } from '@/lib/stripe';
 
-export async function POST(req: NextRequest) {
+async function getUserId() {
   try {
     const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    return userId ?? null;
+  } catch {
+    return null;
+  }
+}
 
+export async function POST(req: NextRequest) {
+  const userId = await getUserId();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
     const { plan } = await req.json();
     const validPlans = ['light', 'pro'];
     if (!validPlans.includes(plan)) {
@@ -26,7 +35,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ptt-alertor-indol.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://ptt-alertor-olive.vercel.app';
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
