@@ -2,9 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { stripe } from '@/lib/stripe';
 
+async function getSafeUserId() {
+  try {
+    const result = await auth();
+    return result.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const userId = await getSafeUserId();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

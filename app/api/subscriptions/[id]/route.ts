@@ -2,12 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { pool } from '@/lib/db';
 
+async function getSafeUserId() {
+  try {
+    const result = await auth();
+    return result.userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getSafeUserId();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -59,7 +68,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const userId = await getSafeUserId();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

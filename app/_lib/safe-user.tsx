@@ -1,20 +1,32 @@
 'use client';
 
-import { useUser as useClerkUser } from '@clerk/nextjs';
+import { useEffect, useState } from 'react';
 
-/**
- * Safe wrapper for useUser that gracefully handles missing ClerkProvider.
- * Returns null user when Clerk is not configured.
- */
 export function useSafeUser() {
-  if (typeof window === 'undefined') {
-    return { user: null, isLoaded: true, error: 'server_render' };
-  }
+  const [state, setState] = useState<{ user: any; isLoaded: boolean; error: string | null }>({ user: null, isLoaded: false, error: null });
 
-  try {
-    const { user, isLoaded } = useClerkUser();
-    return { user, isLoaded, error: null };
-  } catch {
-    return { user: null, isLoaded: true, error: 'clerk_unavailable' };
-  }
+  useEffect(() => {
+    let active = true;
+    import('@clerk/nextjs')
+      .then(({ useUser }) => {
+        if (!active) return;
+        const tmp = document.createElement('div');
+        void tmp;
+        try {
+          const result = useUser();
+          setState({ user: result.user ?? null, isLoaded: result.isLoaded, error: null });
+        } catch {
+          setState({ user: null, isLoaded: true, error: 'clerk_unavailable' });
+        }
+      })
+      .catch(() => {
+        if (active) setState({ user: null, isLoaded: true, error: 'clerk_unavailable' });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return state;
 }

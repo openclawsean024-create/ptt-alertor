@@ -110,7 +110,7 @@ export default function DashboardPage() {
             <Link href="/subscribe" className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
               + 新增訂閱
             </Link>
-            <span className="text-sm text-gray-600">{user?.emailAddresses[0]?.emailAddress}</span>
+            <span className="text-sm text-gray-600">{user?.emailAddresses?.[0]?.emailAddress || '未登入'}</span>
           </div>
         </div>
       </header>
