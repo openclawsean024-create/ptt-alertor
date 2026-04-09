@@ -61,6 +61,7 @@ export default function HistoryPage() {
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">📡 PTT Alertor — 通知歷史</h1>
           <a href="/dashboard" className="text-sm text-blue-600 hover:underline">← 返回儀表板</a>
+            <a href="/settings" className="text-sm text-gray-500 hover:underline">⚙️ 通知設定</a>
         </div>
       </header>
 
