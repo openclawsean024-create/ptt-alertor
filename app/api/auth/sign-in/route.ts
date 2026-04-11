@@ -11,6 +11,7 @@ const JWT_SECRET = new TextEncoder().encode(
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
+    const normalizedEmail = String(email || '').toLowerCase().trim();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     // Find user by email
     const userResult = await pool.query(
       'SELECT * FROM users WHERE email = $1',
-      [email.toLowerCase()]
+      [normalizedEmail]
     );
 
     if (userResult.rows.length === 0) {

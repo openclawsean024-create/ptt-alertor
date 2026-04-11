@@ -13,15 +13,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    const userResult = await pool.query(
-      'SELECT id FROM users WHERE id = $1',
-      [userId]
-    );
-    const userDbId = userResult.rows[0]?.id;
-
-    if (!userDbId) {
-      return NextResponse.json({ data: [] });
-    }
+    const userDbId = userId;
 
     const result = await pool.query(`
       SELECT

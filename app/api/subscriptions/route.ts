@@ -14,7 +14,7 @@ export async function GET() {
       SELECT s.*, b.alias as board_alias
       FROM subscriptions s
       LEFT JOIN boards b ON s.board_name = b.name
-      WHERE s.user_id = (SELECT id FROM users WHERE id = $1)
+      WHERE s.user_id = $1
       ORDER BY s.created_at DESC
     `, [userId]);
 
@@ -41,19 +41,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Ensure user exists in DB
-    let userResult = await pool.query(
+    const userResult = await pool.query(
       'SELECT id FROM users WHERE id = $1 LIMIT 1',
       [userId]
     );
-    let userDbId = userResult.rows[0]?.id;
+    const userDbId = userResult.rows[0]?.id;
 
     if (!userDbId) {
-      const newUser = await pool.query(
-        'INSERT INTO users (clerk_user_id) VALUES ($1) RETURNING id',
-        [userId]
-      );
-      userDbId = newUser.rows[0].id;
+      return NextResponse.json({ error: 'User not found' }, { status: 401 });
     }
 
     // Check tier limits

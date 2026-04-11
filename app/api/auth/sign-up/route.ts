@@ -5,6 +5,7 @@ import { pool } from '@/lib/db';
 export async function POST(req: NextRequest) {
   try {
     const { email, password } = await req.json();
+    const normalizedEmail = String(email || '').toLowerCase().trim();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user already exists
-    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
     if (existing.rows.length > 0) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
     }
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
     await pool.query(
       `INSERT INTO users (email, password_hash, tier, clerk_user_id)
        VALUES ($1, $2, 'free', 'local-' || gen_random_uuid()::text)`,
-      [email.toLowerCase(), passwordHash]
+      [normalizedEmail, passwordHash]
     );
 
     return NextResponse.json({ success: true });
