@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { pool } from '@/lib/db';
 
 export async function PATCH(
@@ -7,7 +7,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth()
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -16,7 +17,7 @@ export async function PATCH(
     const body = await req.json();
 
     const userResult = await pool.query(
-      'SELECT id FROM users WHERE clerk_user_id = $1',
+      'SELECT id FROM users WHERE id = $1',
       [userId]
     );
     const userDbId = userResult.rows[0]?.id;
@@ -59,14 +60,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
+    const session = await auth()
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
     const userResult = await pool.query(
-      'SELECT id FROM users WHERE clerk_user_id = $1',
+      'SELECT id FROM users WHERE id = $1',
       [userId]
     );
     const userDbId = userResult.rows[0]?.id;

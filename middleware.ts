@@ -1,26 +1,28 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-// NOTE: Clerk authentication is temporarily bypassed to unblock deployment.
-// Once CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY are set in Vercel environment variables,
-// this middleware should be updated to use proper Clerk authentication.
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-const secretKey = process.env.CLERK_SECRET_KEY;
+export default async function middleware(req: NextRequest) {
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET,
+  });
 
-export default function middleware(req: NextRequest) {
-  // Temporarily bypass Clerk auth when keys are not configured
-  if (!publishableKey || !secretKey) {
-    return NextResponse.next();
+  const { pathname } = req.nextUrl;
+
+  // Protected routes
+  const protectedPaths = ['/dashboard', '/settings', '/subscribe', '/history'];
+  const isProtected = protectedPaths.some(p => pathname.startsWith(p));
+
+  if (isProtected && !token) {
+    const signInUrl = new URL('/sign-in', req.url);
+    signInUrl.searchParams.set('callbackUrl', pathname);
+    return NextResponse.redirect(signInUrl);
   }
-
-  // When Clerk keys are properly configured, use this pattern instead:
-  // const { clerkMiddleware, createRouteMatcher } = await import('@clerk/nextjs/server');
-  // const isProtected = createRouteMatcher(['/dashboard(.*)', '/subscribe(.*)', ...]);
-  // return clerkMiddleware(async (auth, req) => { if (isProtected(req)) await auth.protect(); })(req);
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };

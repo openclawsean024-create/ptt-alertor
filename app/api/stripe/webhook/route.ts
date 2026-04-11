@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
         if (userId && plan) {
           await pool.query(
-            'UPDATE users SET tier = $1, stripe_customer_id = $2, updated_at = NOW() WHERE clerk_user_id = $3',
+            'UPDATE users SET tier = $1, stripe_customer_id = $2, updated_at = NOW() WHERE id = $3',
             [plan, session.customer, userId]
           );
         }
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         const userId = sub.metadata?.userId;
         if (userId) {
           await pool.query(
-            'UPDATE users SET tier = $1, stripe_subscription_id = $2, updated_at = NOW() WHERE clerk_user_id = $3',
+            'UPDATE users SET tier = $1, stripe_subscription_id = $2, updated_at = NOW() WHERE id = $3',
             [sub.metadata?.plan || 'free', sub.id, userId]
           );
         }
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         const userId = sub.metadata?.userId;
         if (userId) {
           await pool.query(
-            'UPDATE users SET tier = $1, stripe_subscription_id = NULL, updated_at = NOW() WHERE clerk_user_id = $2',
+            'UPDATE users SET tier = $1, stripe_subscription_id = NULL, updated_at = NOW() WHERE id = $2',
             ['free', userId]
           );
         }

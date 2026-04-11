@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { stripe } from '@/lib/stripe';
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const authSession = await auth()
+    const userId = authSession?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
     // Look up user's Stripe customer ID
     const { pool } = await import('@/lib/db');
     const result = await pool.query(
-      'SELECT stripe_customer_id FROM users WHERE clerk_user_id = $1',
+      'SELECT stripe_customer_id FROM users WHERE id = $1',
       [userId]
     );
 
@@ -23,12 +24,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No billing account found' }, { status: 404 });
     }
 
-    const session = await stripe.billingPortal.sessions.create({
+    const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${baseUrl}/dashboard`,
     });
 
-    return NextResponse.json({ success: true, url: session.url });
+    return NextResponse.json({ success: true, url: portalSession.url });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Billing portal error:', message);

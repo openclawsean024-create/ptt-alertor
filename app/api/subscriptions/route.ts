@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { pool } from '@/lib/db';
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const session = await auth()
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -13,7 +14,7 @@ export async function GET() {
       SELECT s.*, b.alias as board_alias
       FROM subscriptions s
       LEFT JOIN boards b ON s.board_name = b.name
-      WHERE s.user_id = (SELECT id FROM users WHERE clerk_user_id = $1)
+      WHERE s.user_id = (SELECT id FROM users WHERE id = $1)
       ORDER BY s.created_at DESC
     `, [userId]);
 
@@ -27,7 +28,8 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const session = await auth()
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     // Ensure user exists in DB
     let userResult = await pool.query(
-      'SELECT id FROM users WHERE clerk_user_id = $1 LIMIT 1',
+      'SELECT id FROM users WHERE id = $1 LIMIT 1',
       [userId]
     );
     let userDbId = userResult.rows[0]?.id;

@@ -7,7 +7,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Users table (managed by Clerk, but we track plan/subscription metadata)
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  clerk_user_id VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255),
+  clerk_user_id VARCHAR(255) UNIQUE,
   email VARCHAR(255),
   line_id VARCHAR(255),
   discord_webhook VARCHAR(500),

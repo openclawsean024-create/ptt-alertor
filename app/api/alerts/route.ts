@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth } from '@/auth';
 import { pool } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const session = await auth()
+    const userId = session?.user?.id;
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
 
     const userResult = await pool.query(
-      'SELECT id FROM users WHERE clerk_user_id = $1',
+      'SELECT id FROM users WHERE id = $1',
       [userId]
     );
     const userDbId = userResult.rows[0]?.id;
