@@ -1,8 +1,7 @@
 'use client';
 
-import { ClerkProvider } from '@clerk/nextjs';
+import { SessionProvider } from 'next-auth/react';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  return <ClerkProvider publishableKey={publishableKey || ''}>{children}</ClerkProvider>;
+  return <SessionProvider>{children}</SessionProvider>;
 }
