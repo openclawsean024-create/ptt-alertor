@@ -1,27 +1,13 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const isProtectedRoute = createRouteMatcher([
-  '/dashboard(.*)',
-  '/history(.*)',
-  '/settings(.*)',
-  '/subscribe(.*)',
-  '/api/alerts(.*)',
-  '/api/boards(.*)',
-  '/api/settings(.*)',
-  '/api/subscriptions(.*)',
-  '/api/cron(.*)',
-  '/api/stripe(.*)',
-]);
-
-export default clerkMiddleware(async (auth, req: NextRequest) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect();
-  }
+// All routes are public — auth is handled at the API level via NextAuth session.
+// NEXT_PUBLIC_BYPASS_AUTH mode: safe-user.tsx returns a system user for no-auth operation.
+export default function middleware(_req: NextRequest) {
   return NextResponse.next();
-});
+}
 
 export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+  // Match all routes except static files
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };
