@@ -1,8 +1,6 @@
 'use client';
 
-import { useUser } from '@clerk/nextjs';
-
+// Bypass mode: no auth required
 export default function SafeUserClient() {
-  const { user, isLoaded } = useUser();
   return null;
 }
