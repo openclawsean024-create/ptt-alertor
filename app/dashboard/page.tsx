@@ -380,41 +380,197 @@ function Modal({ isOpen, onClose, title, children }: {
   );
 }
 
-/* ─── New Subscription Form ─── */
-function NewSubForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [boardName, setBoardName] = useState('');
-  const [keyword, setKeyword] = useState('');
-  const [notifyEmail, setNotifyEmail] = useState(true);
-  const [notifyLine, setNotifyLine] = useState(false);
-  const [notifyDiscord, setNotifyDiscord] = useState(false);
+/* ─── Board Search with Autocomplete ─── */
+function BoardSearch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [query, setQuery] = useState(value);
+  const [suggestions, setSuggestions] = useState<{ name: string; alias: string }[]>([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (query.length < 1) { setSuggestions([]); setOpen(false); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/boards?search=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        setSuggestions(data.data || []);
+        setOpen(true);
+      } catch { /* ignore */ }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        className="input"
+        placeholder="例如：Gossiping"
+        value={query}
+        onChange={e => { setQuery(e.target.value); onChange(e.target.value); }}
+        onFocus={() => { if (query.length >= 1 && suggestions.length > 0) setOpen(true); }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        aria-required="true"
+        aria-autocomplete="list"
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: 'var(--ptt-surface)', border: '1px solid var(--ptt-border)',
+          borderRadius: '8px', zIndex: 200, maxHeight: '200px', overflowY: 'auto',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        }}>
+          {suggestions.map(b => (
+            <button
+              key={b.name}
+              type="button"
+              onMouseDown={() => { setQuery(b.name); onChange(b.name); setOpen(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                width: '100%', padding: '8px 12px', textAlign: 'left',
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--ptt-text)', fontSize: '13px',
+                borderBottom: '1px solid var(--ptt-border)',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--ptt-surface-2)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+            >
+              <span style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{b.name}</span>
+              {b.alias && b.alias !== b.name && (
+                <span style={{ color: 'var(--ptt-text-secondary)', fontSize: '11px' }}>{b.alias}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Multi-Keyword Editor ─── */
+function KeywordsEditor({ keywords, onChange }: {
+  keywords: Keyword[];
+  onChange: (kws: Keyword[]) => void;
+}) {
+  const add = () => onChange([...keywords, { text: '', logic: 'AND' }]);
+  const remove = (i: number) => onChange(keywords.filter((_, idx) => idx !== i));
+  const update = (i: number, field: keyof Keyword, val: string) =>
+    onChange(keywords.map((kw, idx) => idx === i ? { ...kw, [field]: val } : kw));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {keywords.map((kw, i) => (
+        <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {i === 0 ? (
+            <span style={{
+              flexShrink: 0, width: '44px', height: '36px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '10px', color: 'var(--ptt-text-secondary)',
+              fontWeight: 600, letterSpacing: '0.02em',
+            }}>必填</span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => update(i, 'logic', kw.logic === 'AND' ? 'OR' : 'AND')}
+              title="點擊切換 AND / OR"
+              style={{
+                flexShrink: 0, width: '44px', height: '36px', border: 'none',
+                borderRadius: '6px', fontSize: '11px', fontWeight: 700,
+                cursor: 'pointer', transition: 'background 150ms ease',
+                background: kw.logic === 'AND' ? 'var(--ptt-primary)' : 'var(--ptt-accent)',
+                color: '#fff',
+              }}
+            >
+              {kw.logic}
+            </button>
+          )}
+          <input
+            type="text"
+            className="input"
+            style={{ flex: 1 }}
+            placeholder={i === 0 ? '必填關鍵字，例如：普發6000' : '追加關鍵字'}
+            value={kw.text}
+            onChange={e => update(i, 'text', e.target.value)}
+          />
+          {keywords.length > 1 && (
+            <button
+              type="button"
+              onClick={() => remove(i)}
+              className="btn-icon danger"
+              aria-label="移除此關鍵字"
+              style={{ flexShrink: 0 }}
+            >
+              <XIcon />
+            </button>
+          )}
+        </div>
+      ))}
+      {keywords.length < 5 && (
+        <button
+          type="button"
+          onClick={add}
+          className="btn-secondary"
+          style={{ fontSize: '12px', alignSelf: 'flex-start', padding: '4px 12px' }}
+        >
+          + 新增關鍵字
+        </button>
+      )}
+      {keywords.length > 1 && (
+        <p style={{ fontSize: '11px', color: 'var(--ptt-text-secondary)', margin: 0 }}>
+          點擊 AND / OR 按鈕切換邏輯：AND 表示同時包含，OR 表示任一符合
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ─── Shared Subscription Form (New + Edit) ─── */
+function SubForm({
+  initial,
+  onClose,
+  onSuccess,
+  editId,
+}: {
+  initial?: Partial<Subscription>;
+  onClose: () => void;
+  onSuccess: () => void;
+  editId?: string;
+}) {
+  const [boardName, setBoardName] = useState(initial?.board_name ?? '');
+  const [keywords, setKeywords] = useState<Keyword[]>(
+    initial?.keywords?.length ? initial.keywords : [{ text: '', logic: 'OR' }]
+  );
+  const [notifyEmail, setNotifyEmail] = useState(initial?.notify_email ?? true);
+  const [notifyLine, setNotifyLine] = useState(initial?.notify_line ?? false);
+  const [notifyDiscord, setNotifyDiscord] = useState(initial?.notify_discord ?? false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!boardName.trim() || !keyword.trim()) {
-      setError('請填寫看板名稱與關鍵字');
-      return;
-    }
+    const validKws = keywords.filter(k => k.text.trim());
+    if (!editId && !boardName.trim()) { setError('請填寫看板名稱'); return; }
+    if (validKws.length === 0) { setError('請至少輸入一個關鍵字'); return; }
     setSubmitting(true);
     setError('');
     try {
-      const res = await fetch('/api/subscriptions', {
-        method: 'POST',
+      const url = editId ? `/api/subscriptions/${editId}` : '/api/subscriptions';
+      const method = editId ? 'PATCH' : 'POST';
+      const body: Record<string, unknown> = {
+        keywords: validKws,
+        notify_email: notifyEmail,
+        notify_line: notifyLine,
+        notify_discord: notifyDiscord,
+      };
+      if (!editId) body.board_name = boardName.trim();
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          board_name: boardName.trim(),
-          keywords: [{ text: keyword.trim(), logic: 'or' }],
-          notify_email: notifyEmail,
-          notify_line: notifyLine,
-          notify_discord: notifyDiscord,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || '建立失敗');
-        return;
-      }
+      if (!res.ok) { setError(data.error || '操作失敗'); return; }
       onSuccess();
       onClose();
     } catch {
@@ -426,33 +582,19 @@ function NewSubForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: ()
 
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {!editId && (
+        <div>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--ptt-text)' }}>
+            看板名稱
+          </label>
+          <BoardSearch value={boardName} onChange={setBoardName} />
+        </div>
+      )}
       <div>
-        <label htmlFor="board-name" style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--ptt-text)' }}>
-          看板名稱
-        </label>
-        <input
-          id="board-name"
-          type="text"
-          className="input"
-          placeholder="例如：Gossiping"
-          value={boardName}
-          onChange={e => setBoardName(e.target.value)}
-          aria-required="true"
-        />
-      </div>
-      <div>
-        <label htmlFor="keyword" style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--ptt-text)' }}>
+        <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: 'var(--ptt-text)' }}>
           關鍵字
         </label>
-        <input
-          id="keyword"
-          type="text"
-          className="input"
-          placeholder="例如：普發6000"
-          value={keyword}
-          onChange={e => setKeyword(e.target.value)}
-          aria-required="true"
-        />
+        <KeywordsEditor keywords={keywords} onChange={setKeywords} />
       </div>
       <div>
         <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '8px', color: 'var(--ptt-text)' }}>通知方式</p>
@@ -482,7 +624,7 @@ function NewSubForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: ()
       <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
         <button type="button" onClick={onClose} className="btn-secondary">取消</button>
         <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? '建立中...' : '建立監控'}
+          {submitting ? (editId ? '更新中...' : '建立中...') : (editId ? '儲存變更' : '建立監控')}
         </button>
       </div>
     </form>
@@ -516,6 +658,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'monitor' | 'history'>('monitor');
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [showNewSubModal, setShowNewSubModal] = useState(false);
+  const [editingSub, setEditingSub] = useState<Subscription | null>(null);
 
   /* ── Toast helpers ── */
   const addToast = useCallback((title: string, body: string) => {
@@ -590,12 +733,25 @@ export default function DashboardPage() {
     }
   };
 
-  const handleNewSubSuccess = () => {
-    // Refresh subscriptions
+  const refreshSubscriptions = useCallback(() => {
     fetch('/api/subscriptions').then(res => res.json()).then(data => {
       setSubscriptions(data.data || []);
     });
+  }, []);
+
+  const handleNewSubSuccess = () => {
+    refreshSubscriptions();
     addToast('建立成功', '新監控項目已啟動');
+  };
+
+  const handleEditSubSuccess = () => {
+    refreshSubscriptions();
+    addToast('更新成功', '監控項目已儲存');
+  };
+
+  const openEditModal = (id: string) => {
+    const sub = subscriptions.find(s => s.id === id);
+    if (sub) setEditingSub(sub);
   };
 
   const handleMarkRead = (id: string) => {
@@ -776,7 +932,7 @@ export default function DashboardPage() {
                   <SubRow
                     key={sub.id}
                     sub={sub}
-                    onEdit={(id) => { /* TODO: edit modal */ void id; }}
+                    onEdit={openEditModal}
                     onDelete={deleteSubscription}
                     onToggle={toggleSubscription}
                   />
@@ -873,10 +1029,26 @@ export default function DashboardPage() {
         onClose={() => setShowNewSubModal(false)}
         title="新增監控項目"
       >
-        <NewSubForm
+        <SubForm
           onClose={() => setShowNewSubModal(false)}
           onSuccess={handleNewSubSuccess}
         />
+      </Modal>
+
+      {/* ── Edit Subscription Modal ── */}
+      <Modal
+        isOpen={!!editingSub}
+        onClose={() => setEditingSub(null)}
+        title={editingSub ? `編輯：${editingSub.board_name}` : '編輯監控項目'}
+      >
+        {editingSub && (
+          <SubForm
+            editId={editingSub.id}
+            initial={editingSub}
+            onClose={() => setEditingSub(null)}
+            onSuccess={handleEditSubSuccess}
+          />
+        )}
       </Modal>
     </div>
   );
