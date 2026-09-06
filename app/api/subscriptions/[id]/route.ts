@@ -26,7 +26,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const updates: Record<string, any> = { updated_at: new Date() };
+    const updates: Record<string, string | boolean | Date> = { updated_at: new Date() };
     if (body.is_active !== undefined) updates.is_active = body.is_active;
     if (body.keywords !== undefined) updates.keywords = JSON.stringify(body.keywords);
     if (body.notify_line !== undefined) updates.notify_line = body.notify_line;

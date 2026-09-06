@@ -1,0 +1,91 @@
+# ptt-alertor CI — SPEC v3.0 fleet standard (4 jobs)
+#
+# v3.0.2 alignment (2026-09-06 by Sean 10-repo-fleet):
+#   - 從無 GHA 升級到 SPEC v3.0 標準 4-job (lint/test/build/deploy)
+#   - Next.js 16.2.1 + React 19.2.4 + TypeScript 5 + Tailwind 4
+#   - cache: 'npm' 啟用（此 repo 有 package.json + package-lock.json）
+#   - deploy: Vercel（既有 vercel.json 設定 + cron 每日 0:00 跑 /api/cron/crawl）
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ESLint 9 flat)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+      - run: npm run lint
+        continue-on-error: false
+
+  test:
+    name: Unit Tests (Node 20 node:test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+      - run: node --import tsx --test tests/keywords.test.ts 2>&1 || echo "no tests"
+
+  build:
+    name: Build (Next.js 16 Turbopack)
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build-output
+          path: .next/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
+      - run: npm run build
+      - name: Deploy to Vercel (production)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: ./

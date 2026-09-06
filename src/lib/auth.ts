@@ -3,6 +3,12 @@ import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { pool } from '@/lib/db';
 
+interface AppUser {
+  id: string;
+  email: string;
+  tier: string;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
@@ -19,7 +25,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = userResult.rows[0];
         const valid = await bcrypt.compare(password, user.password_hash);
         if (!valid) return null;
-        return { id: String(user.id), email: user.email, tier: user.tier } as any;
+        const appUser: AppUser = { id: String(user.id), email: user.email, tier: user.tier };
+        return appUser;
       },
     }),
   ],
@@ -28,15 +35,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.userId = (user as any).id;
-        token.tier = (user as any).tier;
+        const u = user as AppUser;
+        token.userId = u.id;
+        token.tier = u.tier;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.userId as string;
-        (session.user as any).tier = token.tier as string;
+        const u = session.user as unknown as AppUser;
+        u.id = token.userId as string;
+        u.tier = token.tier as string;
       }
       return session;
     },

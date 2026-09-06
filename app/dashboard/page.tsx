@@ -161,7 +161,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
 /* ─── Article Card Component ─── */
 function ArticleCard({ alert, onMarkRead }: { alert: AlertLog; onMarkRead: (id: string) => void }) {
   const [isRead, setIsRead] = useState(alert.is_read ?? false);
-  const pushCount = alert.push_count ?? Math.floor(Math.random() * 80);
+  const [pushCount] = useState(() => alert.push_count ?? Math.floor(Math.random() * 80));
   const pushClass = getPushClass(pushCount);
   const matchedKw = alert.matched_keywords?.[0] ?? '';
 
@@ -251,7 +251,7 @@ function SubRow({ sub, onEdit, onDelete, onToggle }: {
   onDelete: (id: string) => void;
   onToggle: (id: string, isActive: boolean) => void;
 }) {
-  const matchedCount = sub.matched_count ?? Math.floor(Math.random() * 20);
+  const [matchedCount] = useState(() => sub.matched_count ?? Math.floor(Math.random() * 20));
   const hasNew = sub.is_active && matchedCount > 0;
 
   return (

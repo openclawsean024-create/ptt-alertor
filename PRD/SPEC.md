@@ -1,10 +1,19 @@
-# PTT Alertor 2.0 — 中文即時社群雷達 — 規格計劃書 v3.0 (sweet-spot rewrite)
+# PTT Alertor 2.0 — 中文即時社群雷達 — 規格計劃書 v3.0.2 (SPEC v3.0 fleet alignment)
 
-> 版本：v3.0｜更新日期：2026-07-19｜維護者：Sophia (CPO) for Sean
+> 版本：v3.0.2｜更新日期：2026-09-06｜維護者：Sean 10-repo-fleet (v3.0 → v3.0.2 alignment)
+> 上一版：v3.0 (2026-07-19, Sophia (CPO) for Sean) — sweet-spot rewrite 3/10 → 7.2/10
 > 對接技術：Alan (CTO) + Hermes Agent
 > 原始碼：https://github.com/openclawsean024-create/ptt-alertor
 > Live：https://ptt-alertor-olive.vercel.app
 > 本次重寫動機：**Sweet Spot 體檢 3/10，原始版本目標族群過寬、無法與既有開源工具差異化**。本次縮小範圍到「**股票當沖族 + 求職秒殺族**」兩個付費意願最高的子族群，並加入「AI 摘要 + LINE 一鍵轉傳同溫層」差異化功能。
+
+> **v3.0.2 說明 (2026-09-06 by Sean 10-repo-fleet)**：本版不改動 v3.0 sweet-spot 規格書 §1–§19 正文（已於 2026-07-19 完成 7.2/10 rewrite），僅做 fleet alignment：
+> 1. frontmatter 升級為 v3.0.2 + 維護者換成 Sean 10-repo-fleet
+> 2. 新增 `PRD/CHANGELOG.md` 串接 v2.0 → v3.0 → v3.0.2 變更線
+> 3. 新增 `.github/workflows/ci.yml`（原本 repo 無 GHA）對齊 SPEC v3.0 §7 的 4-job 標準（lint/test/build/deploy → vercel）
+> 4. 新增 ESLint 9 flat config 對齊 fleet 標準
+> 5. 新增 unit test 給 `lib/keywords.ts` 純函式（AND/OR 邏輯 + notification settings parsing）
+> 6. 規格書 §1–§19 不動、production code 不大改
 
 ---
 
